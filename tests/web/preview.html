@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>DailySpotlight — mock home preview</title>
+    <style>
+        body { margin: 0; background: #101418; color: #eee; font: 16px system-ui, sans-serif; }
+        header { padding: 1.4rem 3.3%; background: #171c21; display: flex; justify-content: space-between; align-items: center; }
+        header strong { color: #67d4f2; font-size: 1.3rem; }
+        nav { padding: 1.5rem 3.3% 0; color: #67d4f2; }
+        .mockSection { margin: 2rem 3.3%; padding: 2rem; background: #1a2026; border-radius: .7rem; }
+        small { color: #a6adb5; }
+    </style>
+</head>
+<body>
+    <header><strong>DailySpotlight</strong><small>Mock Jellyfin Web · no real server connected</small></header>
+    <nav>Home</nav>
+    <div id="indexPage"><div id="homeTab"><div class="sections"><div class="mockSection">Your libraries and existing home rows remain below the spotlight.</div></div></div></div>
+    <script>
+        const names = ['The Quiet Coast', 'Beyond the Pines', 'Midnight Signals', 'A Thousand Miles', 'Northern Lights', 'After the Rain'];
+        const colors = ['#225269', '#345943', '#63385f', '#956239', '#2d456c', '#596676'];
+        window.ApiClient = {
+            getCurrentUserId: () => 'preview-user', accessToken: () => 'preview-only',
+            serverAddress: () => location.origin, serverId: () => 'preview-server',
+            getUrl: () => '/DailySpotlight/Items',
+            getImageUrl: (id) => {
+                const index = Number(id.slice(-2)) - 1;
+                const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="${colors[index]}"/><stop offset="1" stop-color="#141822"/></linearGradient></defs><rect width="400" height="600" fill="url(#g)"/><circle cx="200" cy="220" r="105" fill="#ffffff10"/><path d="M0 420 L150 250 L260 380 L400 220 V600 H0" fill="#ffffff0c"/><text x="200" y="490" fill="white" text-anchor="middle" font-family="sans-serif" font-size="22">${names[index]}</text><text x="200" y="530" fill="#ffffff70" text-anchor="middle" font-family="sans-serif" font-size="12">DAILY DISCOVERIES</text></svg>`;
+                return 'data:image/svg+xml,' + encodeURIComponent(svg);
+            }
+        };
+        window.fetch = async () => ({ ok: true, json: async () => ({
+            Enabled: true, Title: 'Your daily spotlight', Date: '2026-11-05',
+            Items: names.map((Name, index) => ({
+                Id: String(index + 1).padStart(32, '0'), Name, Type: index % 2 ? 'Series' : 'Movie',
+                ProductionYear: 2020 + index, ImageTags: { Primary: 'preview' }
+            }))
+        }) });
+    </script>
+    <script src="../../Jellyfin.Plugin.DailySpotlight/Web/dailyspotlight.js"></script>
+</body>
+</html>
