@@ -1,0 +1,13 @@
+{
+  "name": "dailyspotlight-web-tests",
+  "private": true,
+  "scripts": {
+    "artwork": "node scripts/render-artwork.mjs",
+    "test": "node --test tests/web/*.test.cjs tests/release/*.test.cjs",
+    "check": "node --check Jellyfin.Plugin.DailySpotlight/Web/dailyspotlight.js"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0",
+    "sharp": "^0.35.5"
+  }
+}

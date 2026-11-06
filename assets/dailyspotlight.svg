@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title description">
+  <title id="title">DailySpotlight</title>
+  <desc id="description">A glowing cyan spotlight shines over three media cards on a dark blue background. DailySpotlight: A fresh pick. Every day.</desc>
+  <defs>
+    <linearGradient id="background" x2="1" y2="1"><stop stop-color="#101a32"/><stop offset="1" stop-color="#090e1b"/></linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#6de4ff" stop-opacity=".38"/><stop offset="1" stop-color="#6de4ff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="poster" x2="1" y2="1"><stop stop-color="#278eb2"/><stop offset="1" stop-color="#24416d"/></linearGradient>
+    <linearGradient id="leftPoster" x2="1" y2="1"><stop stop-color="#35386d"/><stop offset="1" stop-color="#19213d"/></linearGradient>
+    <linearGradient id="rightPoster" x2="1" y2="1"><stop stop-color="#24645f"/><stop offset="1" stop-color="#15313f"/></linearGradient>
+    <radialGradient id="halo"><stop stop-color="#33c6ec" stop-opacity=".2"/><stop offset="1" stop-color="#33c6ec" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#background)"/>
+  <circle cx="915" cy="345" r="390" fill="url(#halo)"/>
+  <path d="M800 130 L1250 600 L645 600 Z" fill="url(#beam)"/>
+  <path d="M0 658 H1280" stroke="#26344f" stroke-width="2"/>
+  <g fill="#7ce7ff">
+    <circle cx="1090" cy="108" r="3" opacity=".7"/><circle cx="1170" cy="250" r="2" opacity=".5"/>
+    <circle cx="660" cy="225" r="2" opacity=".6"/><circle cx="1000" cy="596" r="3" opacity=".6"/>
+  </g>
+  <g font-family="DejaVu Sans,Arial,sans-serif">
+    <text x="92" y="313" font-size="86" font-weight="700" letter-spacing="-3" fill="#ffffff">Daily</text>
+    <text x="90" y="409" font-size="86" font-weight="700" letter-spacing="-3" fill="#75e5ff">Spotlight</text>
+    <text x="96" y="475" font-size="29" fill="#bccade">A fresh pick. Every day.</text>
+  </g>
+  <g transform="translate(700 274) rotate(-13 80 120)">
+    <rect x="0" y="12" width="166" height="245" rx="18" fill="#050b15" opacity=".5"/>
+    <rect width="166" height="245" rx="18" fill="url(#leftPoster)" stroke="#686aa3" stroke-width="2"/>
+    <circle cx="92" cy="74" r="28" fill="#9192cf" opacity=".45"/>
+    <path d="M0 196 L45 116 L100 180 L140 135 L166 180 V227 Q166 245 148 245 H18 Q0 245 0 227Z" fill="#141d36"/>
+  </g>
+  <g transform="translate(977 265) rotate(12 80 120)">
+    <rect x="0" y="12" width="166" height="245" rx="18" fill="#050b15" opacity=".5"/>
+    <rect width="166" height="245" rx="18" fill="url(#rightPoster)" stroke="#4c9289" stroke-width="2"/>
+    <path d="M10 180 L52 88 L91 156 L124 112 L156 180" fill="none" stroke="#7fb9ac" stroke-width="12" opacity=".35"/>
+    <path d="M0 206 Q80 175 166 200 V227 Q166 245 148 245 H18 Q0 245 0 227Z" fill="#142c36"/>
+  </g>
+  <g transform="translate(828 229)">
+    <rect x="-8" y="16" width="202" height="298" rx="24" fill="#030913" opacity=".6"/>
+    <rect width="186" height="284" rx="20" fill="url(#poster)" stroke="#9aecff" stroke-width="3"/>
+    <path d="M1 216 Q92 159 185 217 V263 Q185 283 165 283 H21 Q1 283 1 263Z" fill="#133756"/>
+    <circle cx="93" cy="118" r="49" fill="#dcf9ff" opacity=".12"/>
+    <path d="M78 88 Q78 82 84 86 L125 113 Q132 118 125 123 L84 150 Q78 154 78 148Z" fill="#edfcff"/>
+    <rect x="25" y="240" width="87" height="5" rx="2.5" fill="#c5eef8" opacity=".7"/>
+    <rect x="25" y="253" width="55" height="4" rx="2" fill="#c5eef8" opacity=".35"/>
+  </g>
+  <g transform="translate(1040 184)">
+    <circle r="30" fill="#153349" stroke="#76e5ff" stroke-width="2"/>
+    <path d="M0 -17 L4 -5 L17 0 L4 5 L0 17 L-4 5 L-17 0 L-4 -5Z" fill="#a8efff"/>
+  </g>
+  <g transform="translate(785 100) rotate(-32)">
+    <rect x="-22" y="-8" width="44" height="28" rx="8" fill="#253c56" stroke="#7ce7ff" stroke-width="2"/>
+    <path d="M-17 20 H17 L25 35 H-25Z" fill="#7ce7ff"/>
+  </g>
+</svg>

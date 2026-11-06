@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>DailySpotlight</title></head>
+<body>
+<div id="DailySpotlightConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
+    <div data-role="content"><div class="content-primary">
+        <h2>DailySpotlight</h2>
+        <p>Daily discoveries, tailored to each user's accessible libraries.</p>
+        <form id="DailySpotlightConfigForm">
+            <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="Enabled"><span>Enable daily spotlight</span></label></div>
+            <div class="inputContainer"><label class="inputLabel" for="Title">Home screen heading</label><input is="emby-input" id="Title" required maxlength="100"></div>
+            <div class="inputContainer"><label class="inputLabel" for="ItemCount">Number of picks (1–50)</label><input is="emby-input" id="ItemCount" type="number" min="1" max="50" required></div>
+            <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="IncludeMovies"><span>Include movies</span></label></div>
+            <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="IncludeSeries"><span>Include series</span></label></div>
+            <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="UnwatchedOnly"><span>Only show unwatched media</span></label></div>
+            <div class="inputContainer"><label class="inputLabel" for="TimeZoneId">Daily reset time zone</label><input is="emby-input" id="TimeZoneId" required><div class="fieldDescription">IANA identifier, e.g. UTC, America/New_York, or Europe/London. Invalid server identifiers fall back to UTC.</div></div>
+            <div class="inputContainer"><label class="inputLabel" for="Seed">Selection seed</label><input is="emby-input" id="Seed"><div class="fieldDescription">Change this value to reshuffle today's picks. Not a secret.</div></div>
+            <p>Home screen integration requires the companion script in Jellyfin Web's index document. Native clients and the modern web layout are not supported by this version.</p>
+            <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
+        </form>
+    </div></div>
+    <script>
+        (function () {
+            var id = '60f798d5-340e-47bc-b618-50a1a040d454';
+            var page = document.querySelector('#DailySpotlightConfigPage');
+            var booleans = ['Enabled', 'IncludeMovies', 'IncludeSeries', 'UnwatchedOnly'];
+            var strings = ['Title', 'TimeZoneId', 'Seed'];
+            page.addEventListener('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(id).then(function (config) {
+                    booleans.forEach(function (key) { page.querySelector('#' + key).checked = config[key]; });
+                    strings.forEach(function (key) { page.querySelector('#' + key).value = config[key]; });
+                    page.querySelector('#ItemCount').value = config.ItemCount;
+                }).catch(function () { Dashboard.alert('Could not load DailySpotlight settings.'); })
+                    .finally(function () { Dashboard.hideLoadingMsg(); });
+            });
+            page.querySelector('form').addEventListener('submit', function (event) {
+                event.preventDefault();
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(id).then(function (config) {
+                    booleans.forEach(function (key) { config[key] = page.querySelector('#' + key).checked; });
+                    strings.forEach(function (key) { config[key] = page.querySelector('#' + key).value.trim(); });
+                    config.ItemCount = Number(page.querySelector('#ItemCount').value);
+                    return ApiClient.updatePluginConfiguration(id, config);
+                }).then(function (result) { Dashboard.processPluginConfigurationUpdateResult(result); })
+                    .catch(function () { Dashboard.alert('Could not save DailySpotlight settings.'); })
+                    .finally(function () { Dashboard.hideLoadingMsg(); });
+            });
+        })();
+    </script>
+</div>
+</body>
+</html>

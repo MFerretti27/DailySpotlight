@@ -1,0 +1,36 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build plugin",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "Jellyfin.Plugin.DailySpotlight/Jellyfin.Plugin.DailySpotlight.csproj", "-c", "Release"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Test server selection",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["test", "tests/DailySpotlight.Tests/DailySpotlight.Tests.csproj", "-c", "Release"],
+      "group": "test",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "Test web client",
+      "type": "shell",
+      "command": "npm",
+      "args": ["test"],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Package plugin",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["build", "Jellyfin.Plugin.DailySpotlight/Jellyfin.Plugin.DailySpotlight.csproj", "-c", "Release", "-t:PackagePlugin"],
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}
