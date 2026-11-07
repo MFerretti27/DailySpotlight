@@ -9,7 +9,15 @@ namespace Jellyfin.Plugin.DailySpotlight;
 public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
     public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer)
-        : base(applicationPaths, xmlSerializer) => Instance = this;
+        : base(applicationPaths, xmlSerializer)
+    {
+        Instance = this;
+        if (string.Equals(Configuration.Title, "Your daily spotlight", StringComparison.Ordinal))
+        {
+            Configuration.Title = "Daily Spotlight";
+            UpdateConfiguration(Configuration);
+        }
+    }
 
     public static Plugin? Instance { get; private set; }
     public override string Name => "DailySpotlight";

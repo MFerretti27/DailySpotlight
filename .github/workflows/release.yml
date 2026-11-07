@@ -126,7 +126,7 @@ jobs:
           gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber \
             "artifacts/DailySpotlight_${RELEASE_VERSION}.zip" artifacts/manifest.json \
             Jellyfin.Plugin.DailySpotlight/Web/dailyspotlight.js assets/dailyspotlight.png
-          printf '\n## Install in Jellyfin\n\nAdd this repository URL under Dashboard → Plugins → Repositories:\n\nhttps://github.com/%s/releases/latest/download/manifest.json\n\nThen install DailySpotlight from the plugin catalog and restart Jellyfin.\n\nTargets Jellyfin 12.4 / .NET 10. The legacy Web home row still requires the companion script setup documented in https://github.com/%s#install-the-web-home-row . Native clients and the modern web layout are not modified.\n' \
+          printf '\n## Install in Jellyfin\n\nAdd this repository URL under Dashboard → Plugins → Repositories:\n\nhttps://github.com/%s/releases/latest/download/manifest.json\n\nThen install DailySpotlight from the plugin catalog and restart Jellyfin. The plugin automatically injects its home row into the legacy Jellyfin Web layout.\n\nTargets Jellyfin 12.4 / .NET 10. Native clients and the modern web layout are not modified. See https://github.com/%s#home-screen-integration for details.\n' \
             "$GITHUB_REPOSITORY" "$GITHUB_REPOSITORY" > artifacts/install-notes.md
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json body --jq '.body' > artifacts/release-notes.md
           cat artifacts/install-notes.md >> artifacts/release-notes.md

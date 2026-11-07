@@ -23,7 +23,7 @@ Rediscover your Jellyfin library with a daily row of movie and series picks.
 - Supports movies, series, 1–50 picks, and an unwatched-only filter.
 - Respects the signed-in user's accessible libraries and content restrictions.
 - Opens the normal Jellyfin item detail page when a poster is selected.
-- Includes dashboard settings, authenticated API, embedded web script, tests, and ZIP packaging.
+- Includes dashboard settings, authenticated API, automatic legacy-Web script injection, tests, and ZIP packaging.
 
 **Compatibility:** this initial version targets **Jellyfin Server 12.4 / .NET 10** and the **legacy Jellyfin Web home layout**. It does not target Jellyfin 10.10/10.11, the modern web layout, or native TV/mobile home screens. Installing a server plugin alone cannot add UI to every Jellyfin client.
 
@@ -45,42 +45,28 @@ Name the repository **DailySpotlight**, save, then open the **Catalog**, select 
 4. Start Jellyfin.
 5. Open **Dashboard → Plugins → DailySpotlight → Settings**, configure the row, and save.
 
-The server should expose `GET /DailySpotlight/Client.js` and authenticated `GET /DailySpotlight/Items` relative to its configured base URL. The latter requires a signed-in user token; administrator API keys are not a substitute for a user session.
+The server automatically injects the companion script into the legacy Jellyfin Web page and exposes `GET /DailySpotlight/Client.js` and authenticated `GET /DailySpotlight/Items` relative to its configured base URL. The latter requires a signed-in user token; administrator API keys are not a substitute for a user session.
 
-## Install the web home row
+## Home screen integration
 
-The companion script must be loaded by the **web client you actually use**. The server plugin does not modify Jellyfin Web files automatically.
+After installing or updating the plugin, restart Jellyfin and reload the legacy Jellyfin Web page. The plugin injects its script into the served Web document; you do not need to edit `index.html` or reapply a script tag after Web updates. Use the shuffle button beside the row title to request a different set of picks for the current day. Administrators can hide that button in plugin settings. The row appears only in the legacy Web home layout, not the modern web layout or native clients. Reverse proxies should preserve Jellyfin's base path when serving the Web page and plugin API.
 
-1. Back up Jellyfin Web's `index.html`.
-2. Add this just before its closing `</body>` tag:
-
-	 ```html
-	 <script defer src="../DailySpotlight/Client.js"></script>
-	 ```
-
-3. Reload Jellyfin Web, using a hard refresh if needed, and sign in.
-
-The relative URL works when the web document is served under `/web/`, including deployments such as `/jellyfin/web/`. If your client is hosted somewhere else, adjust the script URL to point at your server's `DailySpotlight/Client.js` endpoint. Separately hosted clients also need correctly configured CORS and content-security policy; same-origin hosting is recommended.
-
-Common web directories include `/usr/share/jellyfin/web` (Linux packages) and `/jellyfin/jellyfin-web` (official Docker image). Paths vary: inspect your installation rather than assuming these exist. Docker web files may need to be supplied by a custom image or persistent mount; edits inside a running container disappear when it is recreated. Do not mount only an index document from a different Jellyfin release because hashed bundle filenames change.
-
-**Web updates can replace the index document.** Reapply the script tag after updating and confirm the plugin still matches the server ABI. Custom CSS by itself cannot load this JavaScript. No row appears in the modern web layout or native clients.
-
-To uninstall, remove the script tag, stop Jellyfin, remove the plugin folder, and restart.
+To uninstall, stop Jellyfin, remove the plugin folder, and restart.
 
 ## Settings
 
 | Setting | Default | Behavior |
 | --- | --- | --- |
 | Enabled | On | Disabling removes the row on its next refresh. |
-| Title | Your daily spotlight | Heading displayed above the posters. |
-| Item count | 12 | Clamped to 1–50 by the server. |
+| Title | Daily Spotlight | Heading displayed above the posters. |
+| Item count | 20 | Clamped to 1–50 by the server. |
 | Include movies / series | Both on | Disabling both produces no picks. |
 | Unwatched only | Off | Uses Jellyfin's played state, including its series semantics. |
+| Show shuffle button | On | Displays a button beside the row title so users can request a different selection. |
 | Time zone | UTC | IANA ID such as `America/New_York`; invalid identifiers fall back to UTC. |
 | Seed | DailySpotlight | Changing it reshuffles the ranking. Not a secret. |
 
-Picks are stable **while the eligible library, watched state, user, and settings remain unchanged**. New media, removals, permission changes, or unwatched-state changes can alter the row during the day. Consecutive days may contain some of the same titles; this is daily random discovery, not a no-repeat scheduler. Small libraries show fewer picks.
+Picks are stable **while the eligible library, watched state, user, and settings remain unchanged**, unless the user requests a shuffle. New media, removals, permission changes, or unwatched-state changes can also alter the row during the day. Consecutive days may contain some of the same titles; this is daily random discovery, not a no-repeat scheduler. Small libraries show fewer picks.
 
 The web row refreshes when Home is shown, when the browser becomes visible, and roughly once per minute while visible. No plugin-specific recommendation database or scheduled task is needed. For correctness after permission changes, server requests re-query the eligible library rather than serving an all-day permission cache. This first version loads eligible candidates and sorts their hashes per request; very large libraries may need a later bounded-selection optimization.
 
@@ -91,13 +77,13 @@ The web row refreshes when Home is shown, when the browser becomes visible, and 
 ```json
 {
 	"Enabled": true,
-	"Title": "Your daily spotlight",
+	"Title": "Daily Spotlight",
 	"Date": "2026-11-05",
 	"Items": []
 }
 ```
 
-`Items` contains Jellyfin `BaseItemDto` objects. Identity comes from the authenticated `Jellyfin-UserId` claim, never a query parameter. Responses are marked `no-store`. The public JavaScript asset contains no tokens or library data, and requests use the current client's token without persisting it.
+`Items` contains Jellyfin `BaseItemDto` objects. Identity comes from the authenticated `Jellyfin-UserId` claim, never a query parameter. Responses are marked `no-store`. The public JavaScript asset contains no tokens or library data; authenticated requests go through Jellyfin Web's `ApiClient.ajax` and do not persist credentials.
 
 ## Development and validation
 
@@ -154,12 +140,12 @@ The repository URL will not work until the first release workflow completes. Add
 
 Open `tests/web/preview.html` in a browser for a mock home-screen preview with fictional media. It exercises the real companion script but does not connect to Jellyfin.
 
-Automated coverage includes deterministic selection, input-order independence, uniqueness, count bounds, time zones/DST, safe DOM text rendering, authenticated base-path-aware requests, duplicate script loading, logout, and stale account-switch responses. These tests do **not** constitute a live Jellyfin server integration test.
+Automated coverage includes deterministic selection, input-order independence, uniqueness, count bounds, time zones/DST, automatic script injection into legacy Web HTML, base-path-aware script URLs, duplicate-injection prevention, safe DOM text rendering, authenticated requests, logout, and stale account-switch responses. These tests do **not** constitute a live Jellyfin server integration test.
 
 Before deployment, test against a disposable Jellyfin 12.4 server with real libraries:
 
 - Confirm the plugin loads without errors and settings survive a restart.
-- Confirm the row appears on the legacy home tab and its posters open the correct items.
+- Confirm the row is automatically injected on the legacy home tab and its posters open the correct items.
 - Compare two accounts, including one with blocked libraries and parental restrictions.
 - Confirm anonymous requests and API-key-only requests to the items endpoint are rejected.
 - Verify unwatched filtering, empty libraries, disabled state, and missing artwork.

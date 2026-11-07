@@ -87,7 +87,7 @@ export function createManifest({ repository, tag, archiveName, archiveBytes, pro
     return [{
         guid: '60f798d5-340e-47bc-b618-50a1a040d454',
         name: 'DailySpotlight',
-        description: 'Daily movie and series picks from each user\'s accessible libraries. The home row requires the companion script in the legacy Jellyfin Web layout; native clients are not modified.',
+        description: 'Daily movie and series picks from each user\'s accessible libraries. The home row is automatically injected into the legacy Jellyfin Web layout; native clients are not modified.',
         overview: 'Rediscover your library with daily media picks.',
         owner: repository.split('/')[0],
         category: 'General',
