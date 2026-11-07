@@ -110,6 +110,10 @@ npm run check
 
 VS Code build, test, and package tasks are included. CI runs the server, web, and release-manifest tests and uploads the plugin ZIP. `build.yaml` describes the release for Jellyfin's plugin build tooling; it is **not** a hosted plugin repository manifest. The release workflow generates the actual repository manifest from the uploaded archive's bytes.
 
+### Build and test a release candidate locally
+
+Run `npm run build:plugin` to install the Node test dependencies, run the .NET and web tests, build the plugin ZIP, and generate a manifest preview. The version is selected from local Git tags using the same next-version rule as the release workflow; pass `--version X.Y.Z` to build a specific release candidate. The command creates `artifacts/DailySpotlight_<version>.zip` and `artifacts/manifest.json`, but does not create or push a Git tag or publish a GitHub release. The manifest preview points to the future GitHub release URL, so install the ZIP manually to test it before publishing.
+
 ## Publish a GitHub Release
 
 The **Publish Jellyfin plugin** workflow supports both automatic and direct-tag releases. To automatically choose the next version, commit and push the project and workflow, then open **Actions → Publish Jellyfin plugin → Run workflow** on the default branch. Leave the optional version override blank to increment the highest existing stable tag (starting at `v1.0.0`); the workflow pushes that tag and publishes the release in the same run. You can enter an explicit `X.Y.Z` version instead, but it must be greater than the latest existing version.
