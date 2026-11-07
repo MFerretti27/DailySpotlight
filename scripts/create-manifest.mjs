@@ -11,6 +11,66 @@ export function parseReleaseTag(tag) {
     return { version: match.slice(1).join('.'), manifestVersion: `${match.slice(1).join('.')}.0` };
 }
 
+export function getLatestReleaseTag(existingTags) {
+    const parsedTags = existingTags.flatMap(tag => {
+        try {
+            return [{ tag, parts: parseReleaseTag(tag).version.split('.').map(Number) }];
+        } catch {
+            return [];
+        }
+    });
+    const compareParts = (left, right) => {
+        for (let index = 0; index < left.length; index += 1) {
+            if (left[index] !== right[index]) return left[index] - right[index];
+        }
+        return 0;
+    };
+    const latest = parsedTags.reduce((current, candidate) =>
+        !current || compareParts(candidate.parts, current.parts) > 0 ? candidate : current, undefined);
+    return latest?.tag;
+}
+
+export function resolveReleaseTag(existingTags, requestedVersion = '', resumeTag = '') {
+    const latestTag = getLatestReleaseTag(existingTags);
+    const parseParts = tag => parseReleaseTag(tag).version.split('.').map(Number);
+    const compareParts = (left, right) => {
+        for (let index = 0; index < left.length; index += 1) {
+            if (left[index] !== right[index]) return left[index] - right[index];
+        }
+        return 0;
+    };
+    const latestParts = latestTag ? parseParts(latestTag) : undefined;
+
+    const input = requestedVersion.trim();
+    if (input) {
+        const tag = input.startsWith('v') ? input : `v${input}`;
+        const requestedParts = parseParts(tag);
+        if (existingTags.includes(tag)) {
+            throw new Error(`Release tag ${tag} already exists.`);
+        }
+        if (latestTag && compareParts(requestedParts, latestParts) <= 0) {
+            throw new Error(`Release version ${tag} must be greater than the latest tag ${latestTag}.`);
+        }
+        return tag;
+    }
+
+    if (resumeTag) {
+        if (!existingTags.includes(resumeTag)) {
+            throw new Error(`Cannot resume release because tag ${resumeTag} does not exist.`);
+        }
+        parseReleaseTag(resumeTag);
+        return resumeTag;
+    }
+
+    if (!latestTag) return 'v1.0.0';
+
+    const [major, minor, patch] = latestParts;
+    if (patch < 65534) return `v${major}.${minor}.${patch + 1}`;
+    if (minor < 65534) return `v${major}.${minor + 1}.0`;
+    if (major < 65534) return `v${major + 1}.0.0`;
+    throw new Error('Cannot automatically increment the release version beyond v65534.65534.65534.');
+}
+
 export function createManifest({ repository, tag, archiveName, archiveBytes, projectXml, now = new Date() }) {
     const { version, manifestVersion } = parseReleaseTag(tag);
     if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {

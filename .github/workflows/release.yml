@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Optional version override (X.Y.Z; must be greater than the latest release)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -19,6 +25,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
@@ -27,16 +35,40 @@ jobs:
           node-version: '22'
           cache: npm
 
-      - name: Validate release version
+      - name: Resolve release version
         id: version
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_EVENT: ${{ github.event_name }}
+          RELEASE_REF: ${{ github.ref_name }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           node --input-type=module <<'NODE'
           import { appendFileSync } from 'node:fs';
-          import { parseReleaseTag } from './scripts/create-manifest.mjs';
-          const { version } = parseReleaseTag(process.env.RELEASE_TAG);
-          appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
+          import { execFileSync, spawnSync } from 'node:child_process';
+          import { getLatestReleaseTag, parseReleaseTag, resolveReleaseTag } from './scripts/create-manifest.mjs';
+
+          const existingTags = execFileSync('git', ['tag', '--list', 'v*'], { encoding: 'utf8' })
+            .trim().split(/\s+/).filter(Boolean);
+          const requestedVersion = process.env.REQUESTED_VERSION ?? '';
+          let tag;
+          if (process.env.RELEASE_EVENT === 'push') {
+            tag = process.env.RELEASE_REF;
+          } else {
+            let resumeTag = '';
+            const latestTag = getLatestReleaseTag(existingTags);
+            if (!requestedVersion.trim() && latestTag) {
+              const tagCommit = execFileSync('git', ['rev-parse', `${latestTag}^{commit}`], { encoding: 'utf8' }).trim();
+              if (tagCommit === process.env.GITHUB_SHA) {
+                const release = spawnSync('gh', ['release', 'view', latestTag, '--repo', process.env.GITHUB_REPOSITORY,
+                  '--json', 'isDraft', '--jq', '.isDraft'], { encoding: 'utf8' });
+                if (release.status === 0 && release.stdout.trim() === 'true') resumeTag = latestTag;
+              }
+            }
+            tag = resolveReleaseTag(existingTags, requestedVersion, resumeTag);
+          }
+          const { version } = parseReleaseTag(tag);
+          appendFileSync(process.env.GITHUB_OUTPUT, `tag=${tag}\nversion=${version}\n`);
           NODE
 
       - name: Test server plugin
@@ -57,13 +89,26 @@ jobs:
       - name: Generate Jellyfin repository manifest
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: node scripts/create-manifest.mjs "$GITHUB_REPOSITORY" "$RELEASE_TAG" "artifacts/DailySpotlight_${RELEASE_VERSION}.zip" artifacts/manifest.json
+
+      - name: Push generated release tag
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if git rev-parse --verify "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$GITHUB_SHA"
+          else
+            git tag "$RELEASE_TAG"
+          fi
+          git push origin "$RELEASE_TAG"
 
       - name: Publish release assets
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail

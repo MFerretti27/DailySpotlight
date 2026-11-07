@@ -41,6 +41,20 @@ test('only stable canonical version tags are accepted', async () => {
     }
 });
 
+test('resolves the next stable release tag or validates an explicit version', async () => {
+    const { getLatestReleaseTag, resolveReleaseTag } = await modulePromise;
+    assert.equal(resolveReleaseTag([]), 'v1.0.0');
+    assert.equal(resolveReleaseTag(['v1.0.9', 'v1.0.10', 'not-a-release']), 'v1.0.11');
+    assert.equal(getLatestReleaseTag(['v1.0.9', 'v1.0.10', 'not-a-release']), 'v1.0.10');
+    assert.equal(resolveReleaseTag(['v1.2.3'], '1.3.0'), 'v1.3.0');
+    assert.equal(resolveReleaseTag(['v1.2.3'], 'v1.2.4'), 'v1.2.4');
+    assert.equal(resolveReleaseTag(['v1.2.3', 'v1.2.4'], '', 'v1.2.4'), 'v1.2.4');
+    assert.equal(resolveReleaseTag(['v1.2.65534']), 'v1.3.0');
+    assert.throws(() => resolveReleaseTag(['v1.2.3'], '1.2.3'), /already exists/);
+    assert.throws(() => resolveReleaseTag(['v1.2.3'], '1.2.2'), /greater than the latest/);
+    assert.throws(() => resolveReleaseTag([], '1.2'), /Release tags must be/);
+});
+
 test('rejects mismatched archives, invalid repository names and inconsistent server packages', async () => {
     const { createManifest } = await modulePromise;
     assert.throws(() => createManifest({ ...input, archiveName: 'DailySpotlight_1.0.0.zip' }));

@@ -29,8 +29,7 @@ Rediscover your Jellyfin library with a daily row of movie and series picks.
 
 ## Install the server plugin
 
-
-Add this **URL**  in **Dashboard → Plugins → Repositories → Add**:
+Add this **URL** in **Dashboard → Plugins → Repositories → Add**:
 
 ```text
 https://github.com/MFerretti27/DailySpotlight/releases/latest/download/manifest.json
@@ -42,7 +41,7 @@ Name the repository **DailySpotlight**, save, then open the **Catalog**, select 
 
 1. Back up your Jellyfin configuration.
 2. Stop Jellyfin.
-3. Create a `DailySpotlight_1.0.0` folder inside **your Jellyfin data directory's `plugins` folder** and extract the ZIP there. For the official Docker image, this is normally `/config/plugins/DailySpotlight_1.0.0/`.
+3. Create a `DailySpotlight_<version>` folder inside **your Jellyfin data directory's `plugins` folder**, replacing `<version>` with the version in the downloaded ZIP, and extract the ZIP there. For the official Docker image, this is normally `/config/plugins/DailySpotlight_<version>/`.
 4. Start Jellyfin.
 5. Open **Dashboard → Plugins → DailySpotlight → Settings**, configure the row, and save.
 
@@ -113,26 +112,29 @@ VS Code build, test, and package tasks are included. CI runs the server, web, an
 
 ## Publish a GitHub Release
 
-The **Publish Jellyfin plugin** workflow runs when a stable version tag such as `v1.0.0` is pushed. Commit and push the project and workflow first, then create and push the tag:
+The **Publish Jellyfin plugin** workflow supports both automatic and direct-tag releases. To automatically choose the next version, commit and push the project and workflow, then open **Actions → Publish Jellyfin plugin → Run workflow** on the default branch. Leave the optional version override blank to increment the highest existing stable tag (starting at `v1.0.0`); the workflow pushes that tag and publishes the release in the same run. You can enter an explicit `X.Y.Z` version instead, but it must be greater than the latest existing version.
+
+Alternatively, create and push a stable version tag directly:
 
 ```sh
 git tag v1.0.0
 git push origin v1.0.0
 ```
 
-Use a new, increasing `vMAJOR.MINOR.PATCH` tag for each release. Prerelease suffixes and four-component tags are rejected. The tag determines the assembly/package version even if the project file's development version has not changed. Never move a published tag or replace its ZIP: installed versions and checksums must remain trustworthy.
+Use a new, increasing `vMAJOR.MINOR.PATCH` tag for each direct-tag release. Prerelease suffixes and four-component tags are rejected. The tag determines the assembly/package version even if the project file's development version has not changed. Never move a published tag or replace its ZIP: installed versions and checksums must remain trustworthy.
 
 The workflow:
 
-1. Validates the version tag, runs the .NET tests and the web/manifest tests.
-2. Builds a ZIP containing only the versioned plugin assembly.
-3. Generates `manifest.json` with a four-component plugin version, the Jellyfin package ABI, a tag-pinned ZIP download URL, and an **MD5** checksum as required by Jellyfin's installer.
-4. Creates a draft GitHub Release and uploads the plugin ZIP, `manifest.json`, the standalone companion `dailyspotlight.js` (also embedded in the DLL), and the catalog banner `dailyspotlight.png`.
-5. Adds installation instructions to the release notes, then publishes the release as **Latest** so the stable repository URL resolves.
+1. For a manually started release, chooses the next stable patch version (or validates the optional override), then pushes its tag. For a directly pushed tag, validates that tag.
+2. Runs the .NET tests and the web/manifest tests.
+3. Builds a ZIP containing only the versioned plugin assembly.
+4. Generates `manifest.json` with a four-component plugin version, the Jellyfin package ABI, a tag-pinned ZIP download URL, and an **MD5** checksum as required by Jellyfin's installer.
+5. Creates a draft GitHub Release and uploads the plugin ZIP, `manifest.json`, the standalone companion `dailyspotlight.js` (also embedded in the DLL), and the catalog banner `dailyspotlight.png`.
+6. Adds installation instructions to the release notes, then publishes the release as **Latest** so the stable repository URL resolves.
 
 The manifest's `imageUrl` points to that release's banner asset, allowing Jellyfin to show the artwork in its plugin catalog. Artwork is available in `assets/dailyspotlight.svg` (editable source) and `assets/dailyspotlight.png` (1280 × 720 release image). After changing the SVG, run `npm run artwork` and commit the updated PNG. The workflow uploads the committed PNG, which is validated by the test suite. Existing releases will not gain the image until a new version is published and Jellyfin refreshes the repository.
 
-Only the release job receives `contents: write`; it uses GitHub's built-in `GITHUB_TOKEN`, with no personal access token required. Repository or organization policy must allow that token to create releases. Failed uploads leave a draft that can be completed by rerunning the workflow. Reruns refuse to replace assets on an already published release. If you manually create future releases, include a valid manifest asset or the `/releases/latest/download/manifest.json` URL can stop working.
+Only the release job receives `contents: write`; it uses GitHub's built-in `GITHUB_TOKEN`, with no personal access token required. Repository or organization policy must allow that token to create releases and push tags. Failed uploads leave a draft; rerunning the failed manually started workflow resumes that draft when it is for the same commit. Reruns refuse to replace assets on an already published release. If you manually create future releases, include a valid manifest asset or the `/releases/latest/download/manifest.json` URL can stop working.
 
 The manifest advertises the latest release only, not a historical version catalog. The ZIP URL inside it is pinned to that release tag. Forks automatically use their own GitHub repository in generated manifests and release notes; update the installation URL above when documenting a fork.
 
