@@ -5,26 +5,28 @@ const { JSDOM } = require('jsdom');
 const script = readFileSync('Jellyfin.Plugin.DailySpotlight/Web/dailyspotlight.js', 'utf8');
 const id = '910b57b8183449dc80f41d48b26aa109';
 
-function setup(response, fetchImpl) {
-    const dom = new JSDOM('<!doctype html><html><head></head><body><div id="indexPage"><div id="homeTab"><div class="sections"></div></div></div></body></html>', {
+function setup(response, ajaxImpl) {
+    const dom = new JSDOM('<!doctype html><html><head></head><body><div id="indexPage"><div id="homeTab"><div class="sections"><section class="verticalSection section0"><h2 class="sectionTitle">My Media</h2><div class="homeLibraryButtonContainer"></div></section><section class="verticalSection section1"><h2 class="sectionTitle">Latest Movies</h2></section></div></div></div></body></html>', {
         url: 'https://jellyfin.example/web/', runScripts: 'outside-only'
     });
     const requests = [];
+    const upgraded = [];
+    dom.window.CustomElements = { upgradeSubtree: element => upgraded.push(element) };
     dom.window.ApiClient = {
         getCurrentUserId: () => 'user-1', accessToken: () => 'test-token',
         serverAddress: () => 'https://jellyfin.example/jellyfin', serverId: () => 'server-1',
         getUrl: path => `https://jellyfin.example/jellyfin/${path}`,
-        getImageUrl: item => `https://jellyfin.example/jellyfin/Items/${item}/Images/Primary`
+        getScaledImageUrl: (item, options) => `https://jellyfin.example/jellyfin/Items/${item}/Images/${options.type}?width=${options.width}&tag=${options.tag || ''}`
     };
-    dom.window.fetch = async (...args) => {
-        requests.push(args);
-        return fetchImpl ? fetchImpl(...args) : { ok: true, json: async () => response };
+    dom.window.ApiClient.ajax = async options => {
+        requests.push(options);
+        return ajaxImpl ? ajaxImpl(options) : response;
     };
     dom.window.eval(script);
-    return { dom, requests, document: dom.window.document };
+    return { dom, requests, upgraded, document: dom.window.document };
 }
 
-const result = { Enabled: true, Title: 'Daily picks', Date: '2026-11-05', Items: [
+const result = { Enabled: true, Title: 'Daily picks', ShowShuffleButton: true, Date: '2026-11-05', Items: [
     { Id: id, Name: 'Example film', Type: 'Movie', ProductionYear: 2024, ImageTags: { Primary: 'tag' } }
 ] };
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -33,17 +35,74 @@ test('renders accessible poster cards and authenticated base-path-aware requests
     const app = setup(result);
     try {
         await flush();
-        assert.equal(app.document.querySelectorAll('.dailySpotlightCard').length, 1);
-        assert.equal(app.document.querySelector('h2').textContent, 'Daily picks');
-        assert.equal(app.document.querySelector('a').getAttribute('href'), `#/details?id=${id}&serverId=server-1`);
-        assert.equal(app.requests[0][0], 'https://jellyfin.example/jellyfin/DailySpotlight/Items');
-        assert.equal(app.requests[0][1].headers['X-Emby-Token'], 'test-token');
+        assert.equal(app.document.querySelectorAll('.dailySpotlightCard.overflowPortraitCard').length, 1);
+        assert.equal(app.document.querySelector('.dailySpotlight .sectionTitle').textContent, 'Daily picks');
+        assert.equal(app.document.querySelector('.dailySpotlightDate'), null);
+        assert.equal(app.document.querySelector('.dailySpotlightCard .cardImageContainer').getAttribute('href'), `#/details?id=${id}&serverId=server-1`);
+        assert.equal(app.document.querySelector('.dailySpotlightCard').dataset.id, id);
+        assert.ok(app.document.querySelector('.dailySpotlightCard.card-hoverable [data-action="resume"]'));
+        assert.equal(app.document.querySelector('.dailySpotlightCard button[is="emby-playstatebutton"]')?.dataset.played, 'false');
+        assert.equal(app.document.querySelector('.dailySpotlightCard button[is="emby-ratingbutton"]')?.dataset.isfavorite, 'false');
+        assert.ok(app.document.querySelector('.dailySpotlightCard [data-action="menu"]'));
+        const posterScalable = app.document.querySelector('.dailySpotlightCard .cardScalable');
+        assert.ok(posterScalable.contains(posterScalable.querySelector('.cardOverlayContainer')));
+        assert.equal(app.document.querySelector('.dailySpotlightCard .cardFooter').parentElement, app.document.querySelector('.dailySpotlightCard .cardBox'));
+        assert.ok(app.document.querySelector('.dailySpotlightShuffleButton'));
+        assert.equal(app.document.querySelector('.dailySpotlight').previousElementSibling.querySelector('.sectionTitle').textContent, 'My Media');
+        assert.ok(app.document.querySelector('.itemsContainer.scrollSlider'));
+        assert.ok(app.document.querySelector('.cardTextCentered'));
+        assert.ok(app.document.querySelector('.dailySpotlight .cardText').textContent.includes('Example film'));
+        const rowStyles = app.document.querySelector('style').textContent;
+        assert.match(rowStyles, /\.dailySpotlightShuffleButton \{ flex: 0 0 auto; width: 2em; height: 2em; min-width: 2em;/);
+        assert.ok(app.document.querySelector('.cardPadder-overflowPortrait'));
+        assert.doesNotMatch(rowStyles, /\.dailySpotlight \.portraitCard/);
+        assert.match(rowStyles, /\.dailySpotlight \.cardText \{ text-align: center !important; \}/);
+        assert.match(rowStyles, /text-decoration: none !important;/);
+        assert.equal(app.upgraded[0], app.document.querySelector('.dailySpotlight'));
+        assert.equal(app.document.querySelector('.dailySpotlightPoster').getAttribute('src'),
+            `https://jellyfin.example/jellyfin/Items/${id}/Images/Primary?width=400&tag=tag`);
+        assert.equal(app.requests[0].url, 'https://jellyfin.example/jellyfin/DailySpotlight/Items');
+        assert.equal(app.requests[0].type, 'GET');
+        assert.equal(app.requests[0].dataType, 'json');
         app.dom.window.eval(script);
         assert.equal(app.requests.length, 1);
-        const originalCard = app.document.querySelector('a');
+        const originalCard = app.document.querySelector('.dailySpotlightCard');
         app.document.dispatchEvent(new app.dom.window.CustomEvent('viewshow'));
         await flush();
-        assert.equal(app.document.querySelector('a'), originalCard);
+        assert.equal(app.document.querySelector('.dailySpotlightCard'), originalCard);
+    } finally { app.dom.window.close(); }
+});
+
+test('shuffle button requests and displays a fresh selection', async () => {
+    const newId = '510b57b8183449dc80f41d48b26aa101';
+    const shuffledResult = { ...result, Items: [
+        { Id: newId, Name: 'A different film', Type: 'Movie', ProductionYear: 2022 }
+    ] };
+    let callCount = 0;
+    const app = setup(result, () => (++callCount === 1 ? result : shuffledResult));
+    try {
+        await flush();
+        app.document.querySelector('.dailySpotlightShuffleButton').click();
+        await flush();
+        assert.equal(app.requests[1].url, 'https://jellyfin.example/jellyfin/DailySpotlight/Items?shuffle=true');
+        assert.equal(app.document.querySelector('.dailySpotlightCard .cardImageContainer').getAttribute('href'), `#/details?id=${newId}&serverId=server-1`);
+        assert.equal(app.document.querySelector('.dailySpotlightShuffleButton').disabled, false);
+    } finally { app.dom.window.close(); }
+});
+
+test('hides the shuffle button when disabled by an administrator', async () => {
+    const app = setup({ ...result, ShowShuffleButton: false });
+    try {
+        await flush();
+        assert.equal(app.document.querySelector('.dailySpotlightShuffleButton'), null);
+    } finally { app.dom.window.close(); }
+});
+
+test('uses Daily Spotlight when the configured heading is empty', async () => {
+    const app = setup({ ...result, Title: '' });
+    try {
+        await flush();
+        assert.equal(app.document.querySelector('.dailySpotlight .sectionTitle').textContent, 'Daily Spotlight');
     } finally { app.dom.window.close(); }
 });
 
@@ -54,9 +113,21 @@ test('treats titles and media names as text, never HTML', async () => {
     ] });
     try {
         await flush();
-        assert.equal(app.document.querySelector('h2').textContent, '<img src=x onerror=alert(1)>');
-        assert.equal(app.document.querySelectorAll('script, img').length, 0);
+        assert.equal(app.document.querySelector('.dailySpotlight .sectionTitle').textContent, '<img src=x onerror=alert(1)>');
+        assert.equal(app.document.querySelectorAll('script').length, 0);
+        assert.equal(app.document.querySelectorAll('.dailySpotlightPoster').length, 1);
         assert.equal(app.document.querySelectorAll('.dailySpotlightCard').length, 1);
+    } finally { app.dom.window.close(); }
+});
+
+test('attempts to load the primary poster when the item has no image tag', async () => {
+    const app = setup({ ...result, Items: [{ Id: id, Name: 'No tag movie', Type: 'Movie' }] });
+    try {
+        await flush();
+        const image = app.document.querySelector('.dailySpotlightPoster');
+        assert.ok(image);
+        assert.equal(image.getAttribute('src'),
+            `https://jellyfin.example/jellyfin/Items/${id}/Images/Primary?width=400&tag=`);
     } finally { app.dom.window.close(); }
 });
 
@@ -73,7 +144,7 @@ test('a late response after user switching is discarded', async () => {
     const app = setup(result, () => new Promise(done => { resolve = done; }));
     try {
         app.dom.window.ApiClient.getCurrentUserId = () => 'user-2';
-        resolve({ ok: true, json: async () => result });
+        resolve(result);
         await flush();
         assert.equal(app.document.querySelector('.dailySpotlight'), null);
     } finally { app.dom.window.close(); }

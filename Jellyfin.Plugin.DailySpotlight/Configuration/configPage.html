@@ -13,9 +13,10 @@
             <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="IncludeMovies"><span>Include movies</span></label></div>
             <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="IncludeSeries"><span>Include series</span></label></div>
             <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="UnwatchedOnly"><span>Only show unwatched media</span></label></div>
+            <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="ShowShuffleButton"><span>Show button to get different daily picks</span></label></div>
             <div class="inputContainer"><label class="inputLabel" for="TimeZoneId">Daily reset time zone</label><input is="emby-input" id="TimeZoneId" required><div class="fieldDescription">IANA identifier, e.g. UTC, America/New_York, or Europe/London. Invalid server identifiers fall back to UTC.</div></div>
             <div class="inputContainer"><label class="inputLabel" for="Seed">Selection seed</label><input is="emby-input" id="Seed"><div class="fieldDescription">Change this value to reshuffle today's picks. Not a secret.</div></div>
-            <p>Home screen integration requires the companion script in Jellyfin Web's index document. Native clients and the modern web layout are not supported by this version.</p>
+            <p>The home row is injected automatically into the legacy Jellyfin Web layout. Native clients and the modern web layout are not supported by this version.</p>
             <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
         </form>
     </div></div>
@@ -23,7 +24,7 @@
         (function () {
             var id = '60f798d5-340e-47bc-b618-50a1a040d454';
             var page = document.querySelector('#DailySpotlightConfigPage');
-            var booleans = ['Enabled', 'IncludeMovies', 'IncludeSeries', 'UnwatchedOnly'];
+            var booleans = ['Enabled', 'IncludeMovies', 'IncludeSeries', 'UnwatchedOnly', 'ShowShuffleButton'];
             var strings = ['Title', 'TimeZoneId', 'Seed'];
             page.addEventListener('pageshow', function () {
                 Dashboard.showLoadingMsg();
