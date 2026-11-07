@@ -1,7 +1,7 @@
 # DailySpotlight
 
 <p align="center">
-	<img src="assets/dailyspotlight.png" alt="DailySpotlight — A fresh pick. Every day." width="900">
+	<img src="assets/dailyspotlight.png" alt="DailySpotlight — A fresh pick. Every day." width="600">
 </p>
 
 <p align="center">
@@ -26,6 +26,14 @@ Rediscover your Jellyfin library with a daily row of movie and series picks.
 - Includes dashboard settings, authenticated API, automatic legacy-Web script injection, tests, and ZIP packaging.
 
 **Compatibility:** this initial version targets **Jellyfin Server 12.4 / .NET 10** and the **legacy Jellyfin Web home layout**. It does not target Jellyfin 10.10/10.11, the modern web layout, or native TV/mobile home screens. Installing a server plugin alone cannot add UI to every Jellyfin client.
+
+## Screenhsots
+<img width="1454" height="293" alt="Screenshot 2026-11-07 at 12 20 23 PM" src="https://github.com/user-attachments/assets/4d672b90-06f9-4103-b5bd-be8460d3f441" />
+<p align="center">
+<img width="400" height="400" alt="Screenshot 2026-11-07 at 12 18 22 PM" src="https://github.com/user-attachments/assets/fcb07a60-07de-4132-8067-6afdf637b232" />
+</p>
+
+
 
 ## Install the server plugin
 
