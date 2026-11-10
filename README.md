@@ -11,6 +11,7 @@
 	<a href="https://github.com/MFerretti27/DailySpotlight/releases">
 		<img src="https://img.shields.io/github/downloads/MFerretti27/DailySpotlight/total?label=release%20downloads&amp;color=00a4dc" alt="Total GitHub release asset downloads">
 	</a>
+	  <a href="https://buymeacoffee.com/mferretti27"><img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buy-me-a-coffee&logoColor=black" alt="Buy me a coffee"/></a>
 </p>
 
 Rediscover your Jellyfin library with a daily row of movie and series picks.
