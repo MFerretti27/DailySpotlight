@@ -29,7 +29,11 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         new PluginPageInfo
         {
             Name = Name,
-            EmbeddedResourcePath = "Jellyfin.Plugin.DailySpotlight.Configuration.configPage.html"
+            DisplayName = "Daily Spotlight",
+            EmbeddedResourcePath = "Jellyfin.Plugin.DailySpotlight.Configuration.configPage.html",
+            EnableInMainMenu = true,
+            MenuSection = "plugins",
+            MenuIcon = "movie"
         }
     ];
 }

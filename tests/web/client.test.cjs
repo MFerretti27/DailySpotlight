@@ -26,7 +26,7 @@ function setup(response, ajaxImpl) {
     return { dom, requests, upgraded, document: dom.window.document };
 }
 
-const result = { Enabled: true, Title: 'Daily picks', ShowShuffleButton: true, Date: '2026-11-05', Items: [
+const result = { Enabled: true, Title: 'Daily picks', ShowShuffleButton: true, ShowMediaType: true, Date: '2026-11-05', Items: [
     { Id: id, Name: 'Example film', Type: 'Movie', ProductionYear: 2024, ImageTags: { Primary: 'tag' } }
 ] };
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -52,6 +52,7 @@ test('renders accessible poster cards and authenticated base-path-aware requests
         assert.ok(app.document.querySelector('.itemsContainer.scrollSlider'));
         assert.ok(app.document.querySelector('.cardTextCentered'));
         assert.ok(app.document.querySelector('.dailySpotlight .cardText').textContent.includes('Example film'));
+        assert.equal(app.document.querySelector('.dailySpotlight .cardText-secondary').textContent, '2024 · Movie');
         const rowStyles = app.document.querySelector('style').textContent;
         assert.match(rowStyles, /\.dailySpotlightShuffleButton \{ flex: 0 0 auto; width: 2em; height: 2em; min-width: 2em;/);
         assert.ok(app.document.querySelector('.cardPadder-overflowPortrait'));
@@ -70,6 +71,20 @@ test('renders accessible poster cards and authenticated base-path-aware requests
         app.document.dispatchEvent(new app.dom.window.CustomEvent('viewshow'));
         await flush();
         assert.equal(app.document.querySelector('.dailySpotlightCard'), originalCard);
+    } finally { app.dom.window.close(); }
+});
+
+test('hides media type labels when only one media type is enabled', async () => {
+    const app = setup({ ...result, ShowMediaType: false, Items: [
+        { Id: id, Name: 'Example film', Type: 'Movie', ProductionYear: 2024 },
+        { Id: '510b57b8183449dc80f41d48b26aa101', Name: 'Example series', Type: 'Series', ProductionYear: 2023 }
+    ] });
+    try {
+        await flush();
+        assert.deepEqual(
+            Array.from(app.document.querySelectorAll('.dailySpotlight .cardText-secondary'), meta => meta.textContent),
+            ['2024', '2023']
+        );
     } finally { app.dom.window.close(); }
 });
 

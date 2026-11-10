@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title description">
   <title id="title">DailySpotlight</title>
-  <desc id="description">A glowing cyan spotlight shines over three media cards on a dark blue background. DailySpotlight: A fresh pick. Every day.</desc>
+  <desc id="description">A glowing cyan spotlight shines over three media cards on a dark blue background. DailySpotlight: Fresh Picks. Every day.</desc>
   <defs>
     <linearGradient id="background" x2="1" y2="1"><stop stop-color="#101a32"/><stop offset="1" stop-color="#090e1b"/></linearGradient>
     <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#6de4ff" stop-opacity=".38"/><stop offset="1" stop-color="#6de4ff" stop-opacity="0"/></linearGradient>
@@ -20,7 +20,7 @@
   <g font-family="DejaVu Sans,Arial,sans-serif">
     <text x="92" y="313" font-size="86" font-weight="700" letter-spacing="-3" fill="#ffffff">Daily</text>
     <text x="90" y="409" font-size="86" font-weight="700" letter-spacing="-3" fill="#75e5ff">Spotlight</text>
-    <text x="96" y="475" font-size="29" fill="#bccade">A fresh pick. Every day.</text>
+    <text x="96" y="475" font-size="29" fill="#bccade">Fresh Picks. Every day.</text>
   </g>
   <g transform="translate(700 274) rotate(-13 80 120)">
     <rect x="0" y="12" width="166" height="245" rx="18" fill="#050b15" opacity=".5"/>

@@ -183,7 +183,8 @@
             name.textContent = item.Name || 'Untitled';
             const meta = document.createElement('div');
             meta.className = 'cardText cardTextCentered cardText-secondary';
-            meta.textContent = [item.ProductionYear, item.Type === 'Series' ? 'Series' : 'Movie'].filter(Boolean).join(' · ');
+            meta.textContent = [item.ProductionYear, result.ShowMediaType ? (item.Type === 'Series' ? 'Series' : 'Movie') : null]
+                .filter(Boolean).join(' · ');
             footer.append(name, meta);
             box.append(scalable, footer);
             card.append(box);

@@ -1,7 +1,7 @@
 # DailySpotlight
 
 <p align="center">
-	<img src="assets/dailyspotlight.png" alt="DailySpotlight — A fresh pick. Every day." width="600">
+	<img src="assets/dailyspotlight.png" alt="DailySpotlight — Fresh Picks. Every day." width="600">
 </p>
 
 <p align="center">
@@ -51,7 +51,7 @@ Name the repository **DailySpotlight**, save, then open the **Catalog**, select 
 2. Stop Jellyfin.
 3. Create a `DailySpotlight_<version>` folder inside **your Jellyfin data directory's `plugins` folder**, replacing `<version>` with the version in the downloaded ZIP, and extract the ZIP there. For the official Docker image, this is normally `/config/plugins/DailySpotlight_<version>/`.
 4. Start Jellyfin.
-5. Open **Dashboard → Plugins → DailySpotlight → Settings**, configure the row, and save.
+5. Open **Dashboard → Plugins → Daily Spotlight** in the dashboard menu, configure the row, and save. The existing plugin details page also links to the same settings.
 
 The server automatically injects the companion script into the legacy Jellyfin Web page and exposes `GET /DailySpotlight/Client.js` and authenticated `GET /DailySpotlight/Items` relative to its configured base URL. The latter requires a signed-in user token; administrator API keys are not a substitute for a user session.
 
@@ -68,11 +68,11 @@ To uninstall, stop Jellyfin, remove the plugin folder, and restart.
 | Enabled | On | Disabling removes the row on its next refresh. |
 | Title | Daily Spotlight | Heading displayed above the posters. |
 | Item count | 20 | Clamped to 1–50 by the server. |
-| Include movies / series | Both on | Disabling both produces no picks. |
+| Include movies / series | Both on | At least one must remain selected. |
 | Unwatched only | Off | Uses Jellyfin's played state, including its series semantics. |
 | Show shuffle button | On | Displays a button beside the row title so users can request a different selection. |
 | Time zone | UTC | IANA ID such as `America/New_York`; invalid identifiers fall back to UTC. |
-| Seed | DailySpotlight | Changing it reshuffles the ranking. Not a secret. |
+| Seed | DailySpotlight | Changing it changes the selection pattern and daily picks for all users. Use the shuffle button to get different picks for one user. Not a secret. |
 
 Picks are stable **while the eligible library, watched state, user, and settings remain unchanged**, unless the user requests a shuffle. New media, removals, permission changes, or unwatched-state changes can also alter the row during the day. Consecutive days may contain some of the same titles; this is daily random discovery, not a no-repeat scheduler. Small libraries show fewer picks.
 
