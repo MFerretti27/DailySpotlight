@@ -33,7 +33,7 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             EmbeddedResourcePath = "Jellyfin.Plugin.DailySpotlight.Configuration.configPage.html",
             EnableInMainMenu = true,
             MenuSection = "plugins",
-            MenuIcon = "movie"
+            MenuIcon = "highlight"
         }
     ];
 }
