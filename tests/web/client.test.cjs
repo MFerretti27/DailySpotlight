@@ -5,12 +5,20 @@ const { JSDOM } = require('jsdom');
 const script = readFileSync('Jellyfin.Plugin.DailySpotlight/Web/dailyspotlight.js', 'utf8');
 const id = '910b57b8183449dc80f41d48b26aa109';
 
-function setup(response, ajaxImpl) {
-    const dom = new JSDOM('<!doctype html><html><head></head><body><div id="indexPage"><div id="homeTab"><div class="sections"><section class="verticalSection section0"><h2 class="sectionTitle">My Media</h2><div class="homeLibraryButtonContainer"></div></section><section class="verticalSection section1"><h2 class="sectionTitle">Latest Movies</h2></section></div></div></div></body></html>', {
+function setup(response, ajaxImpl, latestTitle = 'Latest Movies') {
+    const dom = new JSDOM(`<!doctype html><html><head></head><body><div id="indexPage"><div id="homeTab"><div class="sections"><section class="verticalSection section0"><h2 class="sectionTitle">My Media</h2><div class="homeLibraryButtonContainer"></div></section><section class="verticalSection section1"><h2 class="sectionTitle">${latestTitle}</h2></section></div></div></div></body></html>`, {
         url: 'https://jellyfin.example/web/', runScripts: 'outside-only'
     });
     const requests = [];
     const upgraded = [];
+    dom.window.Globalize = {
+        translate(key, name) {
+            if (key === 'LatestFromLibrary') return `Latest from ${name || ''}`;
+            if (key === 'NextUp') return 'Next Up';
+            if (key === 'LiveTV') return 'Live TV';
+            return key;
+        }
+    };
     dom.window.CustomElements = { upgradeSubtree: element => upgraded.push(element) };
     dom.window.ApiClient = {
         getCurrentUserId: () => 'user-1', accessToken: () => 'test-token',
@@ -26,7 +34,7 @@ function setup(response, ajaxImpl) {
     return { dom, requests, upgraded, document: dom.window.document };
 }
 
-const result = { Enabled: true, Title: 'Daily picks', ShowShuffleButton: true, ShowMediaType: true, Date: '2026-11-05', Items: [
+const result = { Enabled: true, Title: 'Daily picks', ShowShuffleButton: true, ShowMediaType: true, HomePosition: 'after-my-media', Date: '2026-11-05', Items: [
     { Id: id, Name: 'Example film', Type: 'Movie', ProductionYear: 2024, ImageTags: { Primary: 'tag' } }
 ] };
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -48,13 +56,19 @@ test('renders accessible poster cards and authenticated base-path-aware requests
         assert.ok(posterScalable.contains(posterScalable.querySelector('.cardOverlayContainer')));
         assert.equal(app.document.querySelector('.dailySpotlightCard .cardFooter').parentElement, app.document.querySelector('.dailySpotlightCard .cardBox'));
         assert.ok(app.document.querySelector('.dailySpotlightShuffleButton'));
+        const header = app.document.querySelector('.dailySpotlightHeader');
+        assert.equal(header.children[1], app.document.querySelector('.dailySpotlightShuffleButton'));
+        assert.equal(app.document.querySelector('.dailySpotlightShuffleButton').getAttribute('is'), null);
+        assert.match(app.document.querySelector('style').textContent, /justify-content: flex-start; gap: 0\.5em;/);
         assert.equal(app.document.querySelector('.dailySpotlight').previousElementSibling.querySelector('.sectionTitle').textContent, 'My Media');
+        assert.equal(app.document.querySelector('.dailySpotlightPosition'), null);
         assert.ok(app.document.querySelector('.itemsContainer.scrollSlider'));
         assert.ok(app.document.querySelector('.cardTextCentered'));
         assert.ok(app.document.querySelector('.dailySpotlight .cardText').textContent.includes('Example film'));
         assert.equal(app.document.querySelector('.dailySpotlight .cardText-secondary').textContent, '2024 · Movie');
         const rowStyles = app.document.querySelector('style').textContent;
-        assert.match(rowStyles, /\.dailySpotlightShuffleButton \{ flex: 0 0 auto; width: 2em; height: 2em; min-width: 2em;/);
+        assert.match(rowStyles, /\.dailySpotlightShuffleButton \{[^}]*flex: 0 0 auto; width: 2em; height: 2em; min-width: 2em;[^}]*cursor: pointer; pointer-events: auto;/);
+        assert.match(rowStyles, /\.dailySpotlightShuffleButton:hover \{ box-shadow: 0 0 0\.5em rgba\(0, 0, 0, 0\.45\); \}/);
         assert.ok(app.document.querySelector('.cardPadder-overflowPortrait'));
         assert.doesNotMatch(rowStyles, /\.dailySpotlight \.portraitCard/);
         assert.match(rowStyles, /\.dailySpotlight \.cardText \{ text-align: center !important; \}/);
@@ -71,6 +85,38 @@ test('renders accessible poster cards and authenticated base-path-aware requests
         app.document.dispatchEvent(new app.dom.window.CustomEvent('viewshow'));
         await flush();
         assert.equal(app.document.querySelector('.dailySpotlightCard'), originalCard);
+    } finally { app.dom.window.close(); }
+});
+
+test('uses the administrator-selected global home section position', async () => {
+    const app = setup({ ...result, HomePosition: 'after-latest-media' }, undefined, 'Latest from Movies');
+    try {
+        await flush();
+        assert.equal(app.document.querySelector('.dailySpotlight').previousElementSibling.className, 'verticalSection section1');
+    } finally { app.dom.window.close(); }
+});
+
+test('matches Jellyfin translated titles for Next Up', async () => {
+    const app = setup({ ...result, HomePosition: 'after-next-up' }, undefined, 'Next Up');
+    try {
+        await flush();
+        assert.equal(app.document.querySelector('.dailySpotlight').previousElementSibling.className, 'verticalSection section1');
+    } finally { app.dom.window.close(); }
+});
+
+test('falls back to after My Media when the configured section is unavailable', async () => {
+    const app = setup({ ...result, HomePosition: 'after-next-up' });
+    try {
+        await flush();
+        assert.equal(app.document.querySelector('.dailySpotlight').previousElementSibling.querySelector('.sectionTitle').textContent, 'My Media');
+    } finally { app.dom.window.close(); }
+});
+
+test('places the row at the top when selected by the administrator', async () => {
+    const app = setup({ ...result, HomePosition: 'top' });
+    try {
+        await flush();
+        assert.equal(app.document.querySelector('.sections').firstElementChild.className, 'verticalSection dailySpotlight');
     } finally { app.dom.window.close(); }
 });
 
@@ -158,6 +204,7 @@ test('a late response after user switching is discarded', async () => {
     let resolve;
     const app = setup(result, () => new Promise(done => { resolve = done; }));
     try {
+        await flush();
         app.dom.window.ApiClient.getCurrentUserId = () => 'user-2';
         resolve(result);
         await flush();

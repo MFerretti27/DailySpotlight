@@ -10,9 +10,12 @@
         .dailySpotlight .cardText { text-align: center !important; }
         .dailySpotlight .cardText a,
         .dailySpotlight .cardText .textActionButton { text-decoration: none !important; }
-        .dailySpotlightHeader { display: flex; align-items: center; justify-content: space-between; }
-        .dailySpotlightShuffleButton { flex: 0 0 auto; width: 2em; height: 2em; min-width: 2em; padding: 0.25em !important; font-size: 80%; }
+        .dailySpotlightHeader { display: flex; align-items: center; justify-content: flex-start; gap: 0.5em; }
+        .dailySpotlightHeader .sectionTitle { margin: 0; }
+        .dailySpotlightShuffleButton { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 2em; height: 2em; min-width: 2em; padding: 0.25em !important; border: 0; border-radius: 50%; background: transparent; color: inherit; font-size: 80%; cursor: pointer; pointer-events: auto; transition: box-shadow 150ms ease; }
         .dailySpotlightShuffleButton .material-icons { font-size: 1.25em; }
+        .dailySpotlightShuffleButton:hover { box-shadow: 0 0 0.5em rgba(0, 0, 0, 0.45); }
+        .dailySpotlightShuffleButton:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
     `;
     document.head.append(style);
 
@@ -28,6 +31,85 @@
         return { home, client, identity: `${client.serverAddress()}|${client.getCurrentUserId()}` };
     }
 
+    const positionTitles = {
+        'after-my-media': {
+            keys: ['HeaderMyMedia', 'HeaderMyMediaSmall'],
+            fallbacks: ['My Media']
+        },
+        'after-continue-watching': {
+            keys: ['HeaderContinueWatching'],
+            fallbacks: ['Continue Watching']
+        },
+        'after-latest-media': {
+            keys: ['HeaderLatestMovies', 'HeaderLatestEpisodes', 'HeaderLatestMedia', 'HeaderLatest'],
+            prefixKeys: ['LatestFromLibrary'],
+            fallbacks: ['Latest Movies', 'Latest TV Shows', 'Latest Episodes', 'Latest Media'],
+            prefixFallbacks: ['Latest from']
+        },
+        'after-next-up': {
+            keys: ['NextUp', 'HeaderNextUp'],
+            fallbacks: ['Next Up']
+        },
+        'after-continue-listening': {
+            keys: ['HeaderContinueListening'],
+            fallbacks: ['Continue Listening']
+        },
+        'after-continue-reading': {
+            keys: ['HeaderContinueReading'],
+            fallbacks: ['Continue Reading']
+        },
+        'after-live-tv': {
+            keys: ['LiveTV', 'HeaderLiveTV'],
+            fallbacks: ['Live TV']
+        },
+        'after-active-recordings': {
+            keys: ['HeaderActiveRecordings'],
+            fallbacks: ['Active Recordings']
+        }
+    };
+
+    function findPositionTarget(home, position) {
+        const sections = Array.from(home.querySelector('.sections').children)
+            .filter(candidate => !candidate.classList.contains('dailySpotlight'));
+        const configured = positionTitles[position];
+        if (!configured) return null;
+        if (position === 'after-my-media') {
+            const librarySection = sections.find(candidate => candidate.querySelector('.homeLibraryButtonContainer'));
+            if (librarySection) return librarySection;
+        }
+        const translatedTitles = configured.keys
+            .map(key => {
+                const title = window.Globalize?.translate?.(key);
+                return title && title !== key ? title : null;
+            })
+            .filter(Boolean);
+        const expectedTitles = new Set([...translatedTitles, ...configured.fallbacks].map(title => title.trim().toLowerCase()));
+        const translatedPrefixes = (configured.prefixKeys || [])
+            .map(key => {
+                const title = window.Globalize?.translate?.(key, '');
+                return title && title !== key ? title : null;
+            })
+            .filter(Boolean);
+        const expectedPrefixes = [...translatedPrefixes, ...(configured.prefixFallbacks || [])]
+            .map(title => title.trim().toLowerCase());
+        return sections.find(candidate => {
+            const title = candidate.querySelector('.sectionTitle')?.textContent.trim().toLowerCase();
+            return title && (expectedTitles.has(title) || expectedPrefixes.some(prefix => title.startsWith(prefix)));
+        }) || null;
+    }
+
+    function placeSection(section, home, position) {
+        const sections = home.querySelector('.sections');
+        if (position === 'top') {
+            sections.prepend(section);
+            return;
+        }
+        const target = findPositionTarget(home, position) || findPositionTarget(home, 'after-my-media')
+            || sections.querySelector(':scope > .section0');
+        if (target) target.insertAdjacentElement('afterend', section);
+        else sections.prepend(section);
+    }
+
     function render(home, client, result) {
         const signature = JSON.stringify(result);
         const existing = home.querySelector('.dailySpotlight');
@@ -40,7 +122,7 @@
         section.__dailySpotlightSignature = signature;
         section.setAttribute('aria-label', result.Title || 'Daily Spotlight');
         const header = document.createElement('div');
-        header.className = 'sectionTitleContainer sectionTitleContainer-cards padded-left';
+        header.className = 'sectionTitleContainer sectionTitleContainer-cards padded-left dailySpotlightHeader';
         const title = document.createElement('h2');
         title.className = 'sectionTitle sectionTitle-cards';
         title.textContent = result.Title || 'Daily Spotlight';
@@ -48,8 +130,7 @@
         if (result.ShowShuffleButton !== false) {
             const shuffleButton = document.createElement('button');
             shuffleButton.type = 'button';
-            shuffleButton.setAttribute('is', 'paper-icon-button-light');
-            shuffleButton.className = 'dailySpotlightShuffleButton autoSize';
+            shuffleButton.className = 'dailySpotlightShuffleButton';
             shuffleButton.title = 'Get different daily picks';
             shuffleButton.setAttribute('aria-label', 'Get different daily picks');
             const icon = document.createElement('span');
@@ -193,21 +274,7 @@
         if (!rail.children.length) return;
         scroller.append(rail);
         section.append(header, scroller);
-        const sections = home.querySelector('.sections');
-        const libraryTiles = sections.querySelector('.homeLibraryButtonContainer');
-        let myMediaSection = libraryTiles?.closest('.verticalSection');
-        if (!myMediaSection) {
-            const myMediaTitle = window.Globalize?.translate?.('HeaderMyMedia') || 'My Media';
-            myMediaSection = Array.from(sections.children).find(candidate =>
-                candidate.querySelector('.sectionTitle')?.textContent.trim() === myMediaTitle);
-        }
-        // My Media is the default first section when the home section uses card tiles.
-        myMediaSection ||= sections.querySelector(':scope > .section0');
-        if (myMediaSection) {
-            myMediaSection.insertAdjacentElement('afterend', section);
-        } else {
-            sections.prepend(section);
-        }
+        placeSection(section, home, result.HomePosition);
         window.CustomElements?.upgradeSubtree(section);
     }
 

@@ -73,6 +73,7 @@ public sealed class SpotlightController(
 
         return Ok(new SpotlightResponse(config.Enabled, config.Title, config.ShowShuffleButton,
             config.IncludeMovies && config.IncludeSeries,
+            config.HomePosition,
             day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), items));
     }
 
@@ -93,5 +94,6 @@ public sealed record SpotlightResponse(
     string Title,
     bool ShowShuffleButton,
     bool ShowMediaType,
+    string HomePosition,
     string Date,
     IReadOnlyList<BaseItemDto> Items);

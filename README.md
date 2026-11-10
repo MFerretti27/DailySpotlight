@@ -17,10 +17,11 @@ Rediscover your Jellyfin library with a daily row of movie and series picks.
 
 ## What it does
 
-- Shows a horizontally scrolling poster row at the top of the legacy Jellyfin Web home tab.
+- Shows a horizontally scrolling poster row on the legacy Jellyfin Web home tab, in an administrator-selected position.
 - Chooses deterministic, shuffled picks for each user and calendar day.
 - Resets at midnight in a configurable time zone (UTC by default).
 - Supports movies, series, 1–50 picks, and an unwatched-only filter.
+- Lets an administrator choose the Daily Spotlight row's position for everyone on the legacy Web home screen.
 - Respects the signed-in user's accessible libraries and content restrictions.
 - Opens the normal Jellyfin item detail page when a poster is selected.
 - Includes dashboard settings, authenticated API, automatic legacy-Web script injection, tests, and ZIP packaging.
@@ -57,7 +58,7 @@ The server automatically injects the companion script into the legacy Jellyfin W
 
 ## Home screen integration
 
-After installing or updating the plugin, restart Jellyfin and reload the legacy Jellyfin Web page. The plugin injects its script into the served Web document; you do not need to edit `index.html` or reapply a script tag after Web updates. Use the shuffle button beside the row title to request a different set of picks for the current day. Administrators can hide that button in plugin settings. The row appears only in the legacy Web home layout, not the modern web layout or native clients. Reverse proxies should preserve Jellyfin's base path when serving the Web page and plugin API.
+After installing or updating the plugin, restart Jellyfin and reload the legacy Jellyfin Web page. The plugin injects its script into the served Web document; you do not need to edit `index.html` or reapply a script tag after Web updates. Administrators can choose the row's position for everyone in **Dashboard → Plugins → Daily Spotlight** settings. The plugin row cannot be added to Jellyfin's built-in **Home → Section Order** list. Use the shuffle button beside the row title to request a different set of picks for the current day; administrators can hide that button in plugin settings. The row appears only in the legacy Web home layout, not the modern web layout or native clients. Reverse proxies should preserve Jellyfin's base path when serving the Web page and plugin API.
 
 To uninstall, stop Jellyfin, remove the plugin folder, and restart.
 
@@ -72,6 +73,7 @@ To uninstall, stop Jellyfin, remove the plugin folder, and restart.
 | Unwatched only | Off | Uses Jellyfin's played state, including its series semantics. |
 | Show shuffle button | On | Displays a button beside the row title so users can request a different selection. |
 | Time zone | UTC | IANA ID such as `America/New_York`; invalid identifiers fall back to UTC. |
+| Home row position | After My Media | Administrator setting applied to everyone. Can be placed at the top or after a supported Home section; if that section is not shown for a user, it falls back to after My Media. |
 | Seed | DailySpotlight | Changing it changes the selection pattern and daily picks for all users. Use the shuffle button to get different picks for one user. Not a secret. |
 
 Picks are stable **while the eligible library, watched state, user, and settings remain unchanged**, unless the user requests a shuffle. New media, removals, permission changes, or unwatched-state changes can also alter the row during the day. Consecutive days may contain some of the same titles; this is daily random discovery, not a no-repeat scheduler. Small libraries show fewer picks.

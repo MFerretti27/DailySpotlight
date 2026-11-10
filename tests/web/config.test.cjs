@@ -8,6 +8,7 @@ const flush = () => new Promise(resolve => setImmediate(resolve));
 
 test('requires movies or series before saving settings', async () => {
     let updateCalls = 0;
+    let savedConfig;
     const config = {
         Enabled: true,
         IncludeMovies: false,
@@ -15,6 +16,7 @@ test('requires movies or series before saving settings', async () => {
         UnwatchedOnly: false,
         ShowShuffleButton: true,
         Title: 'Daily Spotlight',
+        HomePosition: 'after-my-media',
         TimeZoneId: 'UTC',
         Seed: 'DailySpotlight',
         ItemCount: 20
@@ -28,7 +30,11 @@ test('requires movies or series before saving settings', async () => {
     };
     dom.window.ApiClient = {
         getPluginConfiguration: async () => ({ ...config }),
-        updatePluginConfiguration: async () => { updateCalls += 1; return {}; }
+        updatePluginConfiguration: async (_, updatedConfig) => {
+            updateCalls += 1;
+            savedConfig = updatedConfig;
+            return {};
+        }
     };
     dom.window.eval(dom.window.document.querySelector('script').textContent);
 
@@ -47,15 +53,18 @@ test('requires movies or series before saving settings', async () => {
         assert.equal(error.style.color, 'rgb(229, 57, 53)');
         assert.ok(error.compareDocumentPosition(dom.window.document.querySelector('#IncludeMovies')) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
         assert.equal(dom.window.document.activeElement.id, 'IncludeMovies');
+        assert.equal(dom.window.document.querySelector('#HomePosition').value, 'after-my-media');
 
         dom.window.document.querySelector('#IncludeSeries').checked = true;
         dom.window.document.querySelector('#IncludeSeries')
             .dispatchEvent(new dom.window.Event('change', { bubbles: true }));
         assert.equal(dom.window.document.querySelector('#MediaTypeError').hidden, true);
+        dom.window.document.querySelector('#HomePosition').value = 'after-latest-media';
 
         submit();
         await flush();
         assert.equal(updateCalls, 1);
+        assert.equal(savedConfig.HomePosition, 'after-latest-media');
     } finally {
         dom.window.close();
     }

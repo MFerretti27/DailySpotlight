@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="utf-8"><title>DailySpotlight</title></head>
 <body>
-<div id="DailySpotlightConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox">
+<div id="DailySpotlightConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox,emby-select">
     <div data-role="content"><div class="content-primary">
         <h2>DailySpotlight</h2>
         <p>Daily discoveries, tailored to each user's accessible libraries.</p>
@@ -10,6 +10,17 @@
             <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="Enabled"><span>Enable daily spotlight</span></label></div>
             <div class="inputContainer"><label class="inputLabel" for="Title">Home screen heading</label><input is="emby-input" id="Title" required maxlength="100"></div>
             <div class="inputContainer"><label class="inputLabel" for="ItemCount">Number of picks (1–50)</label><input is="emby-input" id="ItemCount" type="number" min="1" max="50" required></div>
+            <div class="selectContainer"><label class="selectLabel" for="HomePosition">Home row position for all users</label><select is="emby-select" id="HomePosition">
+                <option value="top">At top of Home</option>
+                <option value="after-my-media">After My Media</option>
+                <option value="after-continue-watching">After Continue Watching</option>
+                <option value="after-latest-media">After Latest Media</option>
+                <option value="after-next-up">After Next Up</option>
+                <option value="after-continue-listening">After Continue Listening</option>
+                <option value="after-continue-reading">After Continue Reading</option>
+                <option value="after-live-tv">After Live TV</option>
+                <option value="after-active-recordings">After Active Recordings</option>
+            </select><div class="fieldDescription">Applies to everyone. If a user's Home does not show the selected section, Daily Spotlight appears after My Media instead.</div></div>
             <div id="MediaTypeError" class="fieldDescription" role="alert" style="color: #e53935" hidden>Select at least one: movies or series.</div>
             <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="IncludeMovies"><span>Include movies</span></label></div>
             <div class="checkboxContainer"><label class="emby-checkbox-label"><input is="emby-checkbox" type="checkbox" id="IncludeSeries"><span>Include series</span></label></div>
@@ -46,6 +57,7 @@
                     booleans.forEach(function (key) { page.querySelector('#' + key).checked = config[key]; });
                     strings.forEach(function (key) { page.querySelector('#' + key).value = config[key]; });
                     page.querySelector('#ItemCount').value = config.ItemCount;
+                    page.querySelector('#HomePosition').value = config.HomePosition || 'after-my-media';
                 }).catch(function () { Dashboard.alert('Could not load DailySpotlight settings.'); })
                     .finally(function () { Dashboard.hideLoadingMsg(); });
             });
@@ -60,6 +72,7 @@
                     booleans.forEach(function (key) { config[key] = page.querySelector('#' + key).checked; });
                     strings.forEach(function (key) { config[key] = page.querySelector('#' + key).value.trim(); });
                     config.ItemCount = Number(page.querySelector('#ItemCount').value);
+                    config.HomePosition = page.querySelector('#HomePosition').value;
                     return ApiClient.updatePluginConfiguration(id, config);
                 }).then(function (result) { Dashboard.processPluginConfigurationUpdateResult(result); })
                     .catch(function () { Dashboard.alert('Could not save DailySpotlight settings.'); })
