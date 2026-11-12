@@ -128,7 +128,7 @@ The workflow:
 1. For a manually started release, chooses the next stable patch version (or validates the optional override), then pushes its tag. For a directly pushed tag, validates that tag.
 2. Runs the .NET tests and the web/manifest tests.
 3. Builds a ZIP containing only the versioned plugin assembly.
-4. Generates `manifest.json` with a four-component plugin version, the Jellyfin package ABI, a tag-pinned ZIP download URL, and an **MD5** checksum as required by Jellyfin's installer.
+4. Generates `manifest.json` with the new release and all previous published stable releases, preserving each release's Jellyfin ABI, tag-pinned ZIP URL, and **MD5** checksum.
 5. Creates a draft GitHub Release and uploads the plugin ZIP, `manifest.json`, the standalone companion `dailyspotlight.js` (also embedded in the DLL), and the catalog banner `dailyspotlight.png`.
 6. Adds installation instructions to the release notes, then publishes the release as **Latest** so the stable repository URL resolves.
 
@@ -136,7 +136,7 @@ The manifest's `imageUrl` points to that release's banner asset, allowing Jellyf
 
 Only the release job receives `contents: write`; it uses GitHub's built-in `GITHUB_TOKEN`, with no personal access token required. Repository or organization policy must allow that token to create releases and push tags. Failed uploads leave a draft; rerunning the failed manually started workflow resumes that draft when it is for the same commit. Reruns refuse to replace assets on an already published release. If you manually create future releases, include a valid manifest asset or the `/releases/latest/download/manifest.json` URL can stop working.
 
-The manifest advertises the latest release only, not a historical version catalog. The ZIP URL inside it is pinned to that release tag. Forks automatically use their own GitHub repository in generated manifests and release notes; update the installation URL above when documenting a fork.
+The latest release's manifest advertises all published stable releases with valid manifest assets. Each ZIP URL is pinned to its release tag, and changelogs link to the corresponding GitHub release. Publishing fails if a previous stable release lacks a valid manifest, rather than silently dropping it from the catalog. Forks automatically use their own GitHub repository in generated manifests and release notes; update the installation URL above when documenting a fork. The local manifest preview contains only the release candidate.
 
 To check manifest generation locally after packaging:
 

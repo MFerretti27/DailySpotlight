@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -71,7 +72,28 @@ export function resolveReleaseTag(existingTags, requestedVersion = '', resumeTag
     throw new Error('Cannot automatically increment the release version beyond v65534.65534.65534.');
 }
 
-export function createManifest({ repository, tag, archiveName, archiveBytes, projectXml, now = new Date() }) {
+export function loadPublishedReleaseManifests(repository, runGh = args =>
+    execFileSync('gh', args, { encoding: 'utf8' })) {
+    const pages = JSON.parse(runGh(['api', '--paginate', '--slurp', `repos/${repository}/releases?per_page=100`]));
+    return pages.flat().filter(release => {
+        if (release.draft || release.prerelease) return false;
+        try {
+            parseReleaseTag(release.tag_name);
+            return true;
+        } catch {
+            return false;
+        }
+    }).map(release => {
+        if (!release.assets.some(asset => asset.name === 'manifest.json')) {
+            throw new Error(`Published release ${release.tag_name} is missing manifest.json.`);
+        }
+        const content = runGh(['release', 'download', release.tag_name, '--repo', repository,
+            '--pattern', 'manifest.json', '--output', '-']);
+        return { tag: release.tag_name, manifest: JSON.parse(content) };
+    });
+}
+
+export function createManifest({ repository, tag, archiveName, archiveBytes, projectXml, now = new Date(), previousReleases = [] }) {
     const { version, manifestVersion } = parseReleaseTag(tag);
     if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
         throw new Error('Repository must be GitHub OWNER/REPOSITORY.');
@@ -84,6 +106,42 @@ export function createManifest({ repository, tag, archiveName, archiveBytes, pro
     if (!controllerVersion || controllerVersion !== modelVersion) {
         throw new Error('Expected matching pinned Jellyfin.Controller and Jellyfin.Model package versions.');
     }
+    const releaseUrl = releaseTag => `https://github.com/${repository}/releases/tag/${releaseTag}`;
+    const changelog = (releaseVersion, releaseTag) =>
+        `DailySpotlight ${releaseVersion}. See [release notes and setup instructions](${releaseUrl(releaseTag)}).`;
+    const previousVersions = previousReleases.map(previous => {
+        const previousTag = parseReleaseTag(previous.tag);
+        const plugin = Array.isArray(previous.manifest) &&
+            previous.manifest.find(entry => entry.guid === '60f798d5-340e-47bc-b618-50a1a040d454');
+        const entry = plugin && Array.isArray(plugin.versions) &&
+            plugin.versions.find(item => item.version === previousTag.manifestVersion);
+        const expectedSource = `https://github.com/${repository}/releases/download/${previous.tag}/DailySpotlight_${previousTag.version}.zip`;
+        if (!entry || entry.sourceUrl !== expectedSource || !/^[a-f0-9]{32}$/i.test(entry.checksum) ||
+            typeof entry.targetAbi !== 'string' || !entry.targetAbi || !Number.isFinite(Date.parse(entry.timestamp))) {
+            throw new Error(`Invalid manifest for published release ${previous.tag}.`);
+        }
+        const url = releaseUrl(previous.tag);
+        const originalChangelog = typeof entry.changelog === 'string' ? entry.changelog : '';
+        const linkedChangelog = originalChangelog.includes(`[${url}](${url})`) || originalChangelog.includes(`](${url})`)
+            ? originalChangelog
+            : originalChangelog.includes(url)
+                ? originalChangelog.replace(url, `[${url}](${url})`)
+                : `${originalChangelog}${originalChangelog ? '\n\n' : ''}[Release notes and setup instructions](${url}).`;
+        return { ...entry, changelog: linkedChangelog };
+    });
+    const allTags = [tag, ...previousReleases.map(release => release.tag)];
+    if (new Set(allTags).size !== allTags.length) throw new Error('Duplicate release tags in manifest history.');
+    if (getLatestReleaseTag(allTags) !== tag) {
+        throw new Error(`Release ${tag} must be newer than all published releases.`);
+    }
+    const compareVersions = (left, right) => {
+        const leftParts = left.version.split('.').map(Number);
+        const rightParts = right.version.split('.').map(Number);
+        for (let index = 0; index < leftParts.length; index += 1) {
+            if (leftParts[index] !== rightParts[index]) return rightParts[index] - leftParts[index];
+        }
+        return 0;
+    };
     return [{
         guid: '60f798d5-340e-47bc-b618-50a1a040d454',
         name: 'DailySpotlight',
@@ -94,24 +152,26 @@ export function createManifest({ repository, tag, archiveName, archiveBytes, pro
         imageUrl: `https://github.com/${repository}/releases/download/${tag}/dailyspotlight.png`,
         versions: [{
             version: manifestVersion,
-            changelog: `DailySpotlight ${version}. See https://github.com/${repository}/releases/tag/${tag} for release notes and setup instructions.`,
+            changelog: changelog(version, tag),
             targetAbi: `${controllerVersion}.0`,
             sourceUrl: `https://github.com/${repository}/releases/download/${tag}/${archiveName}`,
             // Jellyfin's plugin installer expects MD5, not SHA-256. Hash the exact uploaded ZIP bytes.
             checksum: createHash('md5').update(archiveBytes).digest('hex'),
             timestamp: now.toISOString()
-        }]
+        }, ...previousVersions].sort(compareVersions)
     }];
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-    const [repository, tag, archivePath, outputPath] = process.argv.slice(2);
-    if (!repository || !tag || !archivePath || !outputPath || process.argv.length !== 6) {
-        throw new Error('Usage: node scripts/create-manifest.mjs OWNER/REPO vX.Y.Z ARCHIVE_PATH OUTPUT_PATH');
+    const [repository, tag, archivePath, outputPath, historyOption] = process.argv.slice(2);
+    if (!repository || !tag || !archivePath || !outputPath ||
+        (historyOption !== undefined && historyOption !== '--published-history') || process.argv.length > 7) {
+        throw new Error('Usage: node scripts/create-manifest.mjs OWNER/REPO vX.Y.Z ARCHIVE_PATH OUTPUT_PATH [--published-history]');
     }
     const projectXml = readFileSync(new URL('../Jellyfin.Plugin.DailySpotlight/Jellyfin.Plugin.DailySpotlight.csproj', import.meta.url), 'utf8');
     const manifest = createManifest({ repository, tag, archiveName: basename(archivePath),
-        archiveBytes: readFileSync(archivePath), projectXml });
+        archiveBytes: readFileSync(archivePath), projectXml,
+        previousReleases: historyOption ? loadPublishedReleaseManifests(repository) : [] });
     writeFileSync(outputPath, JSON.stringify(manifest, null, 2) + '\n');
     console.log(`Created ${outputPath} for ${tag}, ABI ${manifest[0].versions[0].targetAbi}`);
 }

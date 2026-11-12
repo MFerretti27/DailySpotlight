@@ -30,7 +30,67 @@ test('generates a Jellyfin repository array with pinned asset URL, ABI and exact
     assert.equal(release.checksum, createHash('md5').update(input.archiveBytes).digest('hex'));
     assert.match(release.checksum, /^[a-f0-9]{32}$/);
     assert.equal(release.timestamp, '2026-11-05T12:00:00.000Z');
+    assert.match(release.changelog, /\[release notes and setup instructions\]\(https:\/\/github\.com\/MFerretti27\/DailySpotlight\/releases\/tag\/v1\.2\.3\)/);
     assert.deepEqual(JSON.parse(JSON.stringify(manifest)), manifest);
+});
+
+test('preserves and sorts published releases with clickable changelog links', async () => {
+    const { createManifest } = await modulePromise;
+    const older = version => createManifest({
+        ...input, tag: `v${version}`, archiveName: `DailySpotlight_${version}.zip`
+    });
+    const oldManifest = older('1.0.0');
+    const oldEntry = oldManifest[0].versions[0];
+    oldEntry.changelog = 'Original notes. See https://github.com/MFerretti27/DailySpotlight/releases/tag/v1.0.0.';
+    oldEntry.targetAbi = '10.10.0.0';
+    const alreadyLinked = older('1.0.10');
+    const previousReleases = [
+        { tag: 'v1.0.0', manifest: oldManifest },
+        { tag: 'v1.0.10', manifest: alreadyLinked }
+    ];
+    const releases = createManifest({ ...input, previousReleases })[0].versions;
+    assert.deepEqual(releases.map(release => release.version), ['1.2.3.0', '1.0.10.0', '1.0.0.0']);
+    assert.equal(releases[2].checksum, oldEntry.checksum);
+    assert.equal(releases[2].targetAbi, '10.10.0.0');
+    assert.equal(releases[2].timestamp, oldEntry.timestamp);
+    assert.equal(releases[2].changelog, 'Original notes. See [https://github.com/MFerretti27/DailySpotlight/releases/tag/v1.0.0](https://github.com/MFerretti27/DailySpotlight/releases/tag/v1.0.0).');
+    assert.equal(releases[1].changelog, alreadyLinked[0].versions[0].changelog);
+    assert.equal(oldEntry.changelog, 'Original notes. See https://github.com/MFerretti27/DailySpotlight/releases/tag/v1.0.0.');
+});
+
+test('rejects invalid, duplicate, or newer published release history', async () => {
+    const { createManifest } = await modulePromise;
+    const old = createManifest({ ...input, tag: 'v1.0.0', archiveName: 'DailySpotlight_1.0.0.zip' });
+    const previous = { tag: 'v1.0.0', manifest: old };
+    assert.throws(() => createManifest({ ...input, previousReleases: [previous, previous] }), /Duplicate/);
+    assert.throws(() => createManifest({ ...input, previousReleases: [{ tag: 'v1.0.1', manifest: old }] }), /Invalid manifest/);
+    assert.throws(() => createManifest({ ...input, tag: 'v0.9.0', archiveName: 'DailySpotlight_0.9.0.zip',
+        previousReleases: [previous] }), /newer than all published/);
+    old[0].versions[0].checksum = 'bad';
+    assert.throws(() => createManifest({ ...input, previousReleases: [previous] }), /Invalid manifest/);
+});
+
+test('loads every stable published release across pages and rejects missing manifests', async () => {
+    const { loadPublishedReleaseManifests } = await modulePromise;
+    const calls = [];
+    const releases = [[
+        { tag_name: 'v1.0.0', draft: false, prerelease: false, assets: [{ name: 'manifest.json' }] },
+        { tag_name: 'v1.1.0', draft: true, prerelease: false, assets: [] }
+    ], [
+        { tag_name: 'v1.0.1', draft: false, prerelease: false, assets: [{ name: 'manifest.json' }] },
+        { tag_name: 'v1.2.0-beta', draft: false, prerelease: true, assets: [] }
+    ]];
+    const runGh = args => {
+        calls.push(args);
+        return args[0] === 'api' ? JSON.stringify(releases) : JSON.stringify([{ tag: args[2] }]);
+    };
+    const result = loadPublishedReleaseManifests(input.repository, runGh);
+    assert.deepEqual(result.map(item => item.tag), ['v1.0.0', 'v1.0.1']);
+    assert.equal(calls.length, 3);
+    assert.deepEqual(calls[0], ['api', '--paginate', '--slurp', 'repos/MFerretti27/DailySpotlight/releases?per_page=100']);
+    assert.deepEqual(calls[1], ['release', 'download', 'v1.0.0', '--repo', input.repository, '--pattern', 'manifest.json', '--output', '-']);
+    releases[0][0].assets = [];
+    assert.throws(() => loadPublishedReleaseManifests(input.repository, runGh), /v1.0.0 is missing manifest.json/);
 });
 
 test('only stable canonical version tags are accepted', async () => {
